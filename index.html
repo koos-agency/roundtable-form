@@ -207,6 +207,15 @@
 
     :focus-visible { outline: 2px solid var(--light-blue); outline-offset: 3px; }
     .text-input:focus-visible, textarea:focus-visible { outline: none; }
+    /* Review: every answer in one list before sending */
+    .review { list-style: none; margin: 36px 0 0; padding: 0; max-width: 760px; border-top: 1px solid var(--line); }
+    .review li { display: grid; grid-template-columns: 44px 1fr auto; gap: 16px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .review .num { font-family: var(--serif); font-size: 1.375rem; line-height: 1.2; }
+    .review .q { font-size: .875rem; color: var(--muted); }
+    .review .a { font-size: 1.125rem; line-height: 1.4; margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .review .a.empty { color: var(--muted); font-style: italic; }
+    .review .a.missing { color: #B3261E; font-style: italic; }
+
     #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 
     /* Mobile: the rail folds into a slim top bar */
@@ -275,7 +284,7 @@
         ]},
         { title: 'Your biggest challenge', help: 'Tell us what you want to achieve with AI and what’s in your way. Think about your own situation and be honest about where you’re stuck helps us put you at the table that can actually move you forward.', items: [
           { id: 807275436, entry: 745463687, type: 'paragraph', title: 'Where do you get stuck with AI, what is your biggest challenge?', help: '', required: false },
-          { id: 1730444328, entry: 2058185056, type: 'choice', title: 'In which phase does this challenge sit?', help: '', required: false, choices: ['Strategy', 'Build', 'Adoption'], hasOther: false }
+          { id: 1730444328, entry: 2058185056, type: 'choice', title: 'In which phase does this challenge sit?', help: '', required: false, choices: ['Design', 'Build', 'Adoption'], hasOther: false }
         ]}
       ]
     };
@@ -292,7 +301,7 @@
       { match: /job role|role/i, kicker: 'The day job', short: 'Your role', placeholder: 'e.g. Head of Product' },
       { match: /organi[sz]ation|company/i, kicker: 'Your home base', short: 'Your organisation', placeholder: 'e.g. Acme Group' },
       { match: /phase/i, kicker: 'Slide it to where it hurts', short: 'The phase', slider: true,
-        notes: { Strategy: 'Deciding what’s worth doing', Build: 'Making it actually work', Adoption: 'Getting people to use it' } },
+        notes: { Design: 'Figuring out what’s worth building', Build: 'Making it actually work', Adoption: 'Getting people to use it' } },
       { match: /stuck|challenge/i, kicker: 'Be honest. Nobody’s grading this', short: 'Where you’re stuck', placeholder: 'The messier, the better.' }
     ];
     const GENERIC_KICKERS = ['Quick one', 'Over to you', 'Nearly there'];
@@ -315,6 +324,7 @@
       if (section.title || section.help) screens.push({ kind: 'section', section, index: s });
       section.items.forEach(item => screens.push({ kind: 'question', item, section, sectionIndex: s }));
     });
+    screens.push({ kind: 'review' });
     screens.push({ kind: 'done' });
 
     const questionScreens = screens.filter(s => s.kind === 'question');
@@ -322,6 +332,7 @@
     let current = 0;
     let submitting = false;
     let finished = false;
+    let reviewed = false; // once people reach the review, "Next" on a question takes them back to it
 
     const stage = document.getElementById('stage');
 
@@ -400,7 +411,7 @@
       const render = () => {
         current = to;
         const screen = screens[current];
-        stage.classList.toggle('dark', screen.kind !== 'question');
+        stage.classList.toggle('dark', screen.kind !== 'question' && screen.kind !== 'review');
         stage.replaceChildren(buildTop(screen), buildScreen(screen, direction));
         updateChrome();
         window.scrollTo({ top: 0 });
@@ -416,10 +427,13 @@
       if (screen.kind === 'question') {
         const err = validate(screen.item);
         if (err) return showError(err);
-        if (screen === questionScreens[questionScreens.length - 1]) return submit();
+        if (reviewed || screen === questionScreens[questionScreens.length - 1]) return go(reviewIndex(), 1);
       }
+      if (screen.kind === 'review') return submit();
       go(current + 1, 1);
     }
+
+    function reviewIndex() { return screens.findIndex(s => s.kind === 'review'); }
 
     function back() { if (current > 0 && !submitting) go(current - 1, -1); }
 
@@ -440,6 +454,7 @@
       let where = 'Koos & Ko Roundtable';
       if (screen.kind === 'section') where = `Part ${pad(screen.index + 1)} · ${screen.section.title}`;
       if (screen.kind === 'question') where = `${pad(questionScreens.indexOf(screen) + 1)} / ${pad(questionScreens.length)} · ${screen.section.title}`;
+      if (screen.kind === 'review') where = 'Check your answers';
       const showBack = current > 0 && screen.kind !== 'done';
       return el('div', { class: 'stage-top' },
         el('span', { class: 'where', text: where }),
@@ -451,6 +466,7 @@
       if (screen.kind === 'welcome') return buildWelcome(wrap);
       if (screen.kind === 'section') return buildSection(wrap, screen);
       if (screen.kind === 'question') return buildQuestion(wrap, screen.item);
+      if (screen.kind === 'review') return buildReview(wrap);
       return buildDone(wrap);
     }
 
@@ -528,7 +544,7 @@
 
       put(wrap, field, el('div', { class: 'actions' },
         el('button', { class: 'btn', type: 'button', onclick: next, id: 'next-btn' },
-          isLast ? 'Send it' : 'Next', el('span', { class: 'arrow', text: isLast ? '↗' : '→', 'aria-hidden': 'true' })),
+          reviewed ? 'Back to review' : isLast ? 'Review answers' : 'Next', el('span', { class: 'arrow', text: '→', 'aria-hidden': 'true' })),
         hint
       ));
       return wrap;
@@ -667,6 +683,34 @@
       box.append(...cards);
       if (otherInput) box.append(otherInput);
       return box;
+    }
+
+    function buildReview(wrap) {
+      reviewed = true;
+      const rows = questionScreens.map(({ item }, i) => {
+        const value = answers[item.id];
+        const empty = isEmpty(value);
+        return el('li', {},
+          el('span', { class: 'num', text: pad(i + 1) }),
+          el('div', {},
+            el('div', { class: 'q', text: item.title }),
+            el('div', {
+              class: 'a' + (empty ? (item.required ? ' missing' : ' empty') : ''),
+              text: empty ? (item.required ? 'Required, still empty' : 'No answer') : [].concat(value).join(', ')
+            })),
+          el('button', { class: 'pill', type: 'button', text: 'Edit', 'aria-label': `Edit answer ${i + 1}`,
+            onclick: () => go(screens.indexOf(questionScreens[i]), -1) }));
+      });
+      put(wrap,
+        el('p', { class: 'kicker', text: 'Almost there' }),
+        el('h2', { text: 'Happy with your answers?' }),
+        el('p', { class: 'help', text: 'Give it one last look. Change anything you like, then send it to the Koos team.' }),
+        el('ol', { class: 'review' }, rows),
+        el('div', { class: 'actions' },
+          el('button', { class: 'btn', type: 'button', onclick: next, id: 'next-btn', 'data-autofocus': true },
+            'Yes, send it', el('span', { class: 'arrow', text: '↗', 'aria-hidden': 'true' })))
+      );
+      return wrap;
     }
 
     function buildDone(wrap) {
