@@ -138,7 +138,6 @@
     .text-input:focus { border-bottom-color: var(--ink); }
     textarea:focus { border-color: var(--ink); }
 
-    .meter { display: flex; align-items: center; gap: 14px; margin-top: 14px; font-size: .875rem; color: var(--muted); }
     .track { flex: 0 1 220px; height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; }
     .track span { display: block; height: 100%; width: 0; background: var(--light-blue); border-radius: inherit; transition: width .4s ease; }
 
@@ -306,13 +305,6 @@
     ];
     const GENERIC_KICKERS = ['Quick one', 'Over to you', 'Nearly there'];
     const SECTION_BUTTONS = ['Let’s start', 'Keep going', 'Onwards'];
-    const METER_STEPS = [
-      [0, 'Waiting for the good stuff'],
-      [1, 'Warming up'],
-      [60, 'Now we’re talking'],
-      [180, 'This is gold'],
-      [400, 'Pure roundtable fuel']
-    ];
 
     function flavourFor(item) { return FLAVOUR.find(f => f.match.test(item.title)) || {}; }
     const pad = n => String(n).padStart(2, '0');
@@ -551,24 +543,14 @@
     }
 
     function buildParagraph(item, flavour, inputId) {
-      const fill = el('span');
-      const label = el('span');
       const area = el('textarea', {
         id: inputId, 'aria-labelledby': inputId + '-label', placeholder: flavour.placeholder || 'Type your answer',
         'data-autofocus': true, required: item.required,
-        oninput: e => { answers[item.id] = e.target.value; updateMeter(); updateChrome(); },
+        oninput: e => { answers[item.id] = e.target.value; updateChrome(); },
         onkeydown: e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); next(); } }
       });
       area.value = answers[item.id] || '';
-      function updateMeter() {
-        const len = area.value.trim().length;
-        const step = [...METER_STEPS].reverse().find(([min]) => len >= min);
-        label.textContent = step[1];
-        fill.style.width = Math.min(100, (len / 400) * 100) + '%';
-      }
-      updateMeter();
-      return el('div', {}, area, el('div', { class: 'meter', 'aria-live': 'polite' },
-        el('div', { class: 'track', 'aria-hidden': 'true' }, fill), label));
+      return area;
     }
 
     function buildSlider(item, flavour, inputId) {
