@@ -7,8 +7,8 @@
   <title>Koos & Ko Roundtable</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- DM Sans for body text; Libre Caslon only as a fallback if ITC Caslon can't load -->
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Libre+Caslon+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <!-- Montserrat for body text; Libre Caslon only as a fallback if ITC Caslon can't load -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Libre+Caslon+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
   <style>
     /* ITC Caslon, the heading face of koos.agency, loaded from Koos's own site */
     @font-face { font-family: "ITC Caslon"; src: url("https://koos.agency/app/themes/koos/assets/fonts/ITC_Caslon-Book.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
@@ -32,7 +32,7 @@
       --btn-ink: var(--white);
 
       --serif: "ITC Caslon", "Libre Caslon Text", Georgia, serif;
-      --sans: "DM Sans", system-ui, sans-serif;
+      --sans: "Montserrat", system-ui, sans-serif;
       --radius: 16px;
       --gap: 8px;
     }
@@ -103,9 +103,7 @@
       padding: clamp(24px, 4vw, 56px); overflow: hidden;
       transition: background-color .45s ease, color .45s ease;
     }
-    .stage-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: .9375rem; color: var(--muted); min-height: 40px; }
-    .stage-top .where { display: flex; align-items: center; gap: 10px; }
-    .stage-top .where::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--light-blue); }
+    .stage-top { display: flex; justify-content: flex-end; align-items: center; gap: 16px; font-size: .9375rem; color: var(--muted); min-height: 40px; }
     .content { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 820px; padding: 48px 0 24px; animation: enter .5s cubic-bezier(.2,.8,.2,1) both; }
     .content.back { animation-name: enter-back; }
     .content.leaving { animation: leave .22s ease both; }
@@ -113,8 +111,6 @@
     @keyframes enter-back { from { opacity: 0; transform: translateY(-24px); } }
     @keyframes leave { to { opacity: 0; transform: translateY(-12px); } }
 
-    .kicker { font-family: var(--serif); font-style: italic; font-size: 1.5rem; line-height: 1.2; margin: 0 0 12px; }
-    .dark .kicker { color: var(--light-blue); }
     h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.015em; margin: 0; }
     h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); line-height: 1.05; }
     h2 { font-size: clamp(2rem, 4.2vw, 3rem); line-height: 1.1; }
@@ -293,17 +289,16 @@
 
     // ---------- Copy ----------
 
-    // Short lines around the real questions. The question text itself is never changed.
-    // Matched on the question title, so new or renamed questions fall back to generic lines.
+    // Extras per question: sidebar label, placeholder, slider notes. The question text itself is never changed.
+    // Matched on the question title, so new or renamed questions simply get none.
     const FLAVOUR = [
-      { match: /your name/i, kicker: 'First things first', short: 'Your name', placeholder: 'Type your name' },
-      { match: /job role|role/i, kicker: 'The day job', short: 'Your role', placeholder: 'e.g. Head of Product' },
-      { match: /organi[sz]ation|company/i, kicker: 'Your home base', short: 'Your organisation', placeholder: 'e.g. Acme Group' },
-      { match: /phase/i, kicker: 'Slide it to where it hurts', short: 'The phase', slider: true,
+      { match: /your name/i, short: 'Your name', placeholder: 'Type your name' },
+      { match: /job role|role/i, short: 'Your role', placeholder: 'e.g. Head of Product' },
+      { match: /organi[sz]ation|company/i, short: 'Your organisation', placeholder: 'e.g. Acme Group' },
+      { match: /phase/i, short: 'The phase', slider: true,
         notes: { Design: 'Figuring out what’s worth building', Build: 'Making it actually work', Adoption: 'Getting people to use it' } },
-      { match: /stuck|challenge/i, kicker: 'Be honest. Nobody’s grading this', short: 'Where you’re stuck', placeholder: 'The messier, the better.' }
+      { match: /stuck|challenge/i, short: 'Where you’re stuck' }
     ];
-    const GENERIC_KICKERS = ['Quick one', 'Over to you', 'Nearly there'];
     const SECTION_BUTTONS = ['Let’s start', 'Keep going', 'Onwards'];
 
     function flavourFor(item) { return FLAVOUR.find(f => f.match.test(item.title)) || {}; }
@@ -443,13 +438,8 @@
     // ---------- Screen builders ----------
 
     function buildTop(screen) {
-      let where = 'Koos & Ko Roundtable';
-      if (screen.kind === 'section') where = `Part ${pad(screen.index + 1)} · ${screen.section.title}`;
-      if (screen.kind === 'question') where = `${pad(questionScreens.indexOf(screen) + 1)} / ${pad(questionScreens.length)} · ${screen.section.title}`;
-      if (screen.kind === 'review') where = 'Check your answers';
       const showBack = current > 0 && screen.kind !== 'done';
       return el('div', { class: 'stage-top' },
-        el('span', { class: 'where', text: where }),
         showBack ? el('button', { class: 'pill', type: 'button', onclick: back, text: '← Back' }) : null);
     }
 
@@ -466,7 +456,6 @@
       const n = questionScreens.length;
       const minutes = Math.max(1, Math.round(n * 0.6));
       put(wrap,
-        el('p', { class: 'kicker', text: 'Koos & Ko Roundtable' }),
         el('h1', { text: FORM.title }),
         el('p', { class: 'lead', text: FORM.description }),
         el('div', { class: 'actions' },
@@ -485,7 +474,6 @@
     function buildSection(wrap, screen) {
       const count = screen.section.items.length;
       put(wrap,
-        el('p', { class: 'kicker', text: `Part ${screen.index + 1} of ${FORM.sections.length}` }),
         el('h1', { text: screen.section.title }),
         screen.section.help ? el('p', { class: 'lead', text: screen.section.help }) : null,
         el('div', { class: 'actions' },
@@ -503,7 +491,6 @@
       const inputId = 'q-' + item.id;
 
       put(wrap,
-        el('p', { class: 'kicker', text: flavour.kicker || GENERIC_KICKERS[qIndex % GENERIC_KICKERS.length] }),
         el('h2', { id: inputId + '-label' }, item.title, item.required ? el('em', { text: ' *', 'aria-label': 'required' }) : null),
         item.help ? el('p', { class: 'help', text: item.help }) : null
       );
@@ -544,7 +531,7 @@
 
     function buildParagraph(item, flavour, inputId) {
       const area = el('textarea', {
-        id: inputId, 'aria-labelledby': inputId + '-label', placeholder: flavour.placeholder || 'Type your answer',
+        id: inputId, 'aria-labelledby': inputId + '-label',
         'data-autofocus': true, required: item.required,
         oninput: e => { answers[item.id] = e.target.value; updateChrome(); },
         onkeydown: e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); next(); } }
@@ -684,7 +671,6 @@
             onclick: () => go(screens.indexOf(questionScreens[i]), -1) }));
       });
       put(wrap,
-        el('p', { class: 'kicker', text: 'Almost there' }),
         el('h2', { text: 'Happy with your answers?' }),
         el('p', { class: 'help', text: 'Give it one last look. Change anything you like, then send it to the Koos team.' }),
         el('ol', { class: 'review' }, rows),
@@ -699,7 +685,6 @@
       const nameItem = questionScreens.map(s => s.item).find(i => /your name/i.test(i.title));
       const first = nameItem && answers[nameItem.id] ? String(answers[nameItem.id]).trim().split(/\s+/)[0] : '';
       put(wrap,
-        el('p', { class: 'kicker', text: 'Sent' }),
         el('h1', {}, first ? `Thanks, ${first}.` : 'Thanks.', el('br'), el('em', { text: 'See you at the table.' })),
         el('p', { class: 'lead', text: 'Your answers are in. We’ll use them to find you the table that can actually move you forward.' })
       );
