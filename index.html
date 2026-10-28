@@ -376,10 +376,14 @@
         if (screen.kind === 'question' && screen.item.id === id) btn.setAttribute('aria-current', 'step');
         else btn.removeAttribute('aria-current');
       });
-      const done = questionScreens.filter(s => !isEmpty(answers[s.item.id])).length;
-      document.getElementById('m-progress-label').textContent = `${pad(Math.max(0, questionIndex()) + 1)} / ${pad(questionScreens.length)}`;
-      document.getElementById('m-progress-label').style.visibility = screen.kind === 'question' ? 'visible' : 'hidden';
-      document.getElementById('m-progress-fill').style.width = `${(finished ? 1 : done / questionScreens.length) * 100}%`;
+      // Progress follows where you are, not what you answered: every question is optional
+      const total = questionScreens.length;
+      const reached = screen.kind === 'review' || screen.kind === 'done' ? total
+        : screen.kind === 'question' ? questionIndex() + 1
+        : screens.slice(0, current).filter(s => s.kind === 'question').length;
+      document.getElementById('m-progress-label').textContent = `${pad(reached)} / ${pad(total)}`;
+      document.getElementById('m-progress-label').style.visibility = reached ? 'visible' : 'hidden';
+      document.getElementById('m-progress-fill').style.width = `${(reached / total) * 100}%`;
     }
 
     function tickClock() {
